@@ -1,6 +1,5 @@
 import java.io.IOException;
 
-// import java.util.Comparator;
 // import java.util.Collection;
 // import java.util.Map;
 // import java.util.TreeMap;
@@ -22,21 +21,61 @@ import static java.util.stream.Collectors.*;
 import org.dblp.mmdb.*;
 import org.xml.sax.SAXException;
 
-class Selfciters {
+class GetCitersDataOfPublication implements Runnable {
+  private volatile int citations = 0;
+  private volatile int selfCitations = 0;
+  private volatile Mmdb database;
+  private volatile String publicationKey;
+  private volatile String authorKey;
+
+  //  constructor
+  public GetCitersDataOfPublication(Mmdb inputDatabase, String inputPublicationKey, String inputAuthorKey) {
+    database = inputDatabase;
+    publicationKey = inputPublicationKey;
+    authorKey = inputAuthorKey;
+  }
+
+  public void run() {
+    // finding all publications which cite
+    List<String> citerPublicationKeys = database.publications()
+      .filter(r-> r.getFieldReader().contains("cite", publicationKey))
+      .map(r -> r.getKey())
+      .collect(toList());
+
+    citations = citerPublicationKeys.size();
+    // looping through all the cited publications
+    for(String citation:citerPublicationKeys) {
+      //getting authors
+      List<String> authors = database.getPublication(citation)
+        .names()
+        .map(n -> n.getPerson().getKey())
+        .collect(toList());
+      if (authors.contains(authorKey)) {
+        selfCitations += 1;
+      }
+    }
+  }
+  public int getCitationCount() {
+    return citations;
+  }
+  public int getSelfCitationCount() {
+    return selfCitations;
+  }
+}
+
+public class Selfciters {
 
   public static List<String> getCitersOfPublications(Mmdb database, String key) { // done + tested
     // returns a list of keys of all publication who have cited the provided key
-    System.out.println("Seeing all the papers where " + key + " was cited");
-    List<String> publicationsWhichSiteThisPaper = database.publications()
+    List<String> publicationsWhichCiteThisPaper = database.publications()
       .filter(r -> r.getFieldReader().contains("cite", key))
       .map(r -> r.getKey())
       .collect(toList());
-    return publicationsWhichSiteThisPaper;
+    return publicationsWhichCiteThisPaper;
   }
 
   public static List<String> getAuthorsOfPublication(Mmdb database, String key) { // done + tested
     // returns a list of keys all authors of a particular publication
-    System.out.println("getting authors of: " + key);
     List<String> authors = database.getPublication(key)
       .names()
       .map(n -> n.getPerson().getKey())
@@ -46,7 +85,6 @@ class Selfciters {
 
   public static List<String> getPublicationsByAuthor(Mmdb database, String key) { // done + tested
     // returns a list of keys of publications from the key of a person/author
-    System.out.println("getting publications of: " + key);
     List<String> publications = database.getPerson(key)
       .publications()
       .map(p -> p.getKey())
@@ -91,6 +129,57 @@ class Selfciters {
     return ((double)selfCitations *100 / (double)totalCitations);
   }
 
+  public static double  getSelfCitationPercentageOfAuthorByThreading(Mmdb database, String key) { // done
+    List<String> publications = getPublicationsByAuthor(database, key);
+
+    // number of publications
+    System.out.println("Number of publications: " + publications.size());
+
+    int totalCitations = 0;
+    int selfCitations = 0;
+
+    List<GetCitersDataOfPublication> objects = new ArrayList<GetCitersDataOfPublication>();
+    List<Thread> threads = new ArrayList<Thread>();
+
+    // adding threads
+    for(String publication:publications) {
+      // generating object
+      GetCitersDataOfPublication object = new GetCitersDataOfPublication(database, publication,key);
+      objects.add(object);
+      // putting it in a thread
+      threads.add(new Thread(object));
+    }
+
+    // starting all threads
+    System.out.println("Starting all threads...");
+    for(Thread thread:threads) {
+      thread.start();
+    }
+
+    // waiting for all the threads to complete
+    System.out.println("All threads have been started, waiting for completion.");
+    for(Thread thread:threads) {
+      try{
+        thread.join();
+      } catch(InterruptedException e){
+        System.out.println("there was a messup");
+      }
+    }
+
+    // collecting all the data
+    System.out.println("All threads have been completed, collecting data...");
+    for(GetCitersDataOfPublication object:objects) {
+      totalCitations += object.getCitationCount();
+      selfCitations += object.getSelfCitationCount();
+    }
+
+    System.out.println("Data has been collected \n\n Result:");
+    System.out.println("Total Citations: " + totalCitations);
+    System.out.println("Self Citations: " + selfCitations);
+
+    return ((double)selfCitations *100 / (double)totalCitations);
+  }
+
   public static void main(String[] args) throws IOException, SAXException {
 
     // to handle the large size of the dataset, setting  entity expansion to 10**7
@@ -107,18 +196,35 @@ class Selfciters {
     String dblpDtdFilename = args[1];
 
     // Loading the database
-    Mmdb database = new Mmdb(dblpXmlFilename, dblpDtdFilename,true); // < 2min or 120s
+    System.out.println("Loading XML into Memory...");
+    long startTime = System.currentTimeMillis();
+    Mmdb database = new Mmdb(dblpXmlFilename, dblpDtdFilename,false); // < 2min or 120s
+    long endTime = System.currentTimeMillis();
+    long duration = (endTime - startTime);
+    System.out.println("That took a total of: " + duration + " ms");
 
     // testing our precious functions
+    // System.out.println(getCitersOfPublications(database,  "journals/cacm/Codd70")); // 14+ seconds
+    // System.out.println(getPublicationsByAuthor(database, "homepages/c/EFCodd"));// almost no time
+    // System.out.println(getAuthorsOfPublication(database, "journals/cacm/Codd70")); // almost no time
 
-    System.out.println(getCitersOfPublications(database,  "journals/cacm/Codd70")); // 14+ seconds
-    System.out.println(getPublicationsByAuthor(database, "homepages/c/EFCodd"));// almost no time
-    System.out.println(getAuthorsOfPublication(database, "journals/cacm/Codd70")); // almost no time
+    // System.out.println("Starting single threaded version");
+    // startTime = System.currentTimeMillis();
+    System.out.println("SelfCitation percent on a single thread: " + getSelfCitationPercentageOfAuthor(database, "homepages/c/EFCodd") + " %");
+    // endTime = System.currentTimeMillis();
+    // duration = (endTime - startTime);
+    // System.out.println("That took a total of: " + duration + " ms");
 
-    System.out.println("SelfCitation percent: " + getSelfCitationPercentageOfAuthor(database, "homepages/c/EFCodd") + " %");
     // Total Citations: 1465
     // Self Citations: 3
     // SelfCitation percent: 0.20477815699658702 %
     // That took a total of: 288191ms = 288s = 4min 48s
+
+    System.out.println("Starting multi threaded threaded version");
+    startTime = System.currentTimeMillis();
+    System.out.println("SelfCitation percent by threading: " + getSelfCitationPercentageOfAuthorByThreading(database, "homepages/c/EFCodd") + " %");
+    endTime = System.currentTimeMillis();
+    duration = (endTime - startTime);
+    System.out.println("That took a total of: " + duration + " ms");
   }
 }
