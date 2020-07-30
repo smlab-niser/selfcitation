@@ -2,18 +2,46 @@
 
 Finding Self Citations 
 
-The devs in the dblp team were kind enough to provide a "library" and examples on how to use it.
+using `lxml` python library
 
-[link](https://dblp.dagstuhl.de/faq/1474681.html)
+# expected time things take
 
-first compile your java code in a class with :
-
-```
-	javac -cp mmdb-2019-04-29.jar codefilename.java
-```
-
-Then to run it, do:
-
-```
-	java -Xmx8G -cp mmdb-2019-04-29.jar:. codefilename /media/data6TB/Deshmukh/dblp.xml /media/data6TB/Deshmukh/dblp.dtd
-```
+- Loading the `XML` into memory: `52 s`
+- Types of tags: `35`
+- One itteration over the complete xml with only reading the tag names: `20 s`
+- all tags: 
+	- 'dblp'
+	- 'article'
+	- 'author'
+	- 'title'
+	- 'journal'
+	- 'year'
+	- 'ee'
+	- 'book'
+	- 'publisher'
+	- 'isbn'
+	- 'volume'
+	- 'month'
+	- 'url'
+	- 'note'
+	- 'cdrom'
+	- 'sup'
+	- 'editor'
+	- 'sub'
+	- 'proceedings'
+	- 'booktitle'
+	- 'series'
+	- 'inproceedings'
+	- 'crossref'
+	- 'www'
+	- 'pages'
+	- 'mastersthesis'
+	- 'school'
+	- 'incollection'
+	- 'i'
+	- 'cite'
+	- 'number'
+	- 'tt'
+	- 'phdthesis'
+	- 'chapter'
+	- 'address'
