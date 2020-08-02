@@ -2,58 +2,66 @@
 
 from lxml import etree
 from tqdm import tqdm
-from pprint import pprint
-import time
 
-fileName = "dblp.xml"
-parseFileName = "dblp.dtd"
-folder = "/media/data6TB/Deshmukh/"
+from database import database
+from variables import (
+    folder,
+    fileName,
+    postgres_username,
+    postgres_password,
+    postgres_dbname,
+)
 
-fullpath = folder + fileName
 
-count = 0
-authors = []
+fullPath = folder + fileName
 
-print("importing")
-start = time.time()
+# connection to postgres database
+print(f"Starting connection with the postgres database {postgres_dbname}...")
+db = database(postgres_dbname, postgres_username, postgres_password)
+
+# importing xml file
+print("Importing xml file...")
 parser = etree.XMLParser(dtd_validation=True, load_dtd=True)
-Tree = etree.parse(fullpath, parser=parser)
+Tree = etree.parse(fullPath, parser=parser)
 root = Tree.getroot()
-end = time.time()
-print(f"Done importing, that took a total of {end-start}")
+print("XML file has been imported")
 
-print("looking for the types of tags present")
-start = time.time()
-typesOfTags = []
-for element in root.iter():
-    tag = element.tag
-    if tag not in typesOfTags:
-        typesOfTags.append(tag)
-end = time.time()
-print(f"There are {len(typesOfTags)} types of tags, they are:")
-pprint(typesOfTags)
-print(f"An itteration through the whole xml takes about {end-start}")
+# setting up the tables and stuff
+print("Setting up the database")
+db.setup(verbose=True)
+print("Done")
+
+# scraping data
+print("Starting scraping")
+for element in tqdm(root):
+    publicationKey = element.get("key")
+    publicationTitle = ""
+    publicationYear = -1
+
+    for subElement in element:
+        # removing \' coz they can mess things up
+        try:
+            value = subElement.text.replace("'", "")
+        except Exception:
+            value = subElement.text
+        if subElement.tag == "cite":
+            db.addCitation(value, publicationKey)
+        elif subElement.tag == "author":
+            db.addAuthorNAuthorship(value, publicationKey)
+        elif subElement.tag == "title":
+            publicationTitle = value
+        elif subElement.tag == "year":
+            publicationYear = int(subElement.text)
+        else:
+            continue
+    # adding publication
+    db.addPublication(
+        publicationTitle, publicationKey, publicationYear, element.get("publtype")
+    )
 
 
-# for event, elem in tqdm(etree.iterparse(fullpath, load_dtd=True)):
-#     # if elem.tag not in ["article", "inproceedings", "proceedings"]:
-#     #     continue
-#     elemAuthors = elem.findall("author")
-#     for elemAuthor in elemAuthors:
-#         if elemAuthor.text not in authors:
-#             print(elemAuthor.text)
-#             authors.append(elemAuthor.text)
+# clean up
+print("Closing connections...")
+db.close()
 
-#     elem.clear()
-# pprint(authors)
-# print(f"that is a total of {len(authors)} authors")
-
-
-# for event, elem in lxml.etree.iterparser(fullpath, load_dtd="True"):
-#     if elem.tag not in ['article', 'inproceedings', 'proceedings']:
-#         continue
-
-#     title = elem.find('title')
-#     year = elem.find('year')
-#     authors = elem.find('author')
-#     venue = elem.find('venue')
+print("DONE, feel free to checkout the guts of your lovely database")

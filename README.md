@@ -2,7 +2,34 @@
 
 Finding Self Citations 
 
-using `lxml` python library
+# Setup
+
+### Database
+
+Before running this let's create the database and user, do not put the curly brackets in the following
+
+```
+CREATE DATABASE {postgres_dbname};
+CREATE USER {postgres_username} WITH PASSWORD {postgres_password};
+GRANT ALL ON DATABASE {postgres_dbname} TO {postgres_username};
+```
+### Variables
+
+Make a `variables.py` in `./src/`
+make the following variables in then
+
+- `folder` : The directory where the xml file precides
+- `fileName` : The name of the xml file
+- `postgres_dbname` : the name of the database which you used in the last section
+- `postgres_username` : the user for the databse which you used in the last section
+- `postgres_password` :  the password of the use which you used in the last section
+- `discord_token` : THe discord token
+- `discord_channel_id` : The discord channel id
+
+# UML of the postgres database
+
+![the uml](./uml.png)
+
 
 # expected time things take
 
