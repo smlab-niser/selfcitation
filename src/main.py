@@ -34,7 +34,6 @@ root = Tree.getroot()
 end = time.time()
 print(f"Importing xml took: {end - start}")
 
-# setting up the tables and stuff
 print("Setting up the database")
 start = time.time()
 db.setup(verbose=True)
@@ -42,25 +41,12 @@ db.close()
 end = time.time()
 print(f"Setting database tables took: {end - start}")
 
-# splitting the list
 print("Splitting lists")
 start = time.time()
 root_parts = list_splitter.split(root, number_of_threads)
 end = time.time()
 print(f"Splitting xml doc into {number_of_threads} parts took: {end-start}")
 
-# engulfing splits into <root></root>
-# def shell(root_part):
-#     root_shell = etree.Element("root")
-#     for element in root_part:
-#         root_shell.append(element)
-#     return root_shell
-
-# shelled_roots = []
-# for root_part in root_parts:
-#     shelled_roots.append(shell(root_part))
-
-# scraping data
 print("Starting scraping")
 start = time.time()
 
@@ -108,7 +94,7 @@ print("Closing connections...")
 super_end = time.time()
 
 print(
-    f"""DONE, feel free to checkout the guts of your lovely database
+    f"""DONE, feel free to checkout the guts of your database
     XML file: {folder + fileName}
     Spread across: {number_of_threads} threads
     Total time: {super_end - super_start}

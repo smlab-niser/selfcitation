@@ -1,4 +1,7 @@
-"""Updates and calculates the citation_count and self_citation_count
+"""
+Come to this once all the data from the xml has been moved into the database
+
+Updates and calculates the citation_count and self_citation_count
 in the author table
 
 It is recommended to run index.py before running this.

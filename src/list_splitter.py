@@ -1,4 +1,4 @@
-"""Used to a list into ~equal parts
+"""Used to a list into ~ equal parts
 """
 
 
