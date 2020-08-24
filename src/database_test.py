@@ -26,8 +26,10 @@ correct = "👌"
 
 try:
     db = database(postgres_dbname, postgres_username, postgres_password)
+    db2 = database(postgres_dbname, postgres_username, postgres_password)
     print(correct + " connection to database successful")
 except Exception as error:
+    raise Exception
     print(wrong + " cound not connect to the database")
     print(error)
 

@@ -28,10 +28,11 @@ class database:
         except Exception:
             raise Exception("Unable to connect to database")
             print("Unable to connect to database")
-        self.cur = self.conn.cursor()
-        self.cur.execute("SELECT version();")
-        record = self.cur.fetchone()
+        cur = self.conn.cursor()
+        cur.execute("SELECT version();")
+        record = cur.fetchone()
         self.__print(f"You are connected to - {record}")
+        cur.close()
         return
 
     def __print(self, string, **args):
@@ -51,9 +52,9 @@ class database:
             nothing
         """
         self.to_say = verbose
-
+        cur = self.conn.cursor()
         self.__print("Creating Author table...")
-        self.cur.execute(
+        cur.execute(
             """CREATE TABLE author (
                 id                  SERIAL PRIMARY KEY,
                 name                VARCHAR(255) NOT NULL,
@@ -66,7 +67,7 @@ class database:
 
         # publication table
         self.__print("Creating Publication table...")
-        self.cur.execute(
+        cur.execute(
             """CREATE TABLE publication (
                 title            VARCHAR(1000),
                 key              VARCHAR(255) NOT NULL,
@@ -79,7 +80,7 @@ class database:
 
         # authorship table
         self.__print("Creating Authorship Table...")
-        self.cur.execute(
+        cur.execute(
             """CREATE TABLE Authorship (
                 author_id        INT,
                 publication_key  VARCHAR(255)
@@ -90,7 +91,7 @@ class database:
 
         # citation table
         self.__print("Creating citations table...")
-        self.cur.execute(
+        cur.execute(
             """CREATE TABLE citation (
                 citee_publication_key VARCHAR(255) NOT NULL,
                 citer_publication_key VARCHAR(255) NOT NULL
@@ -99,10 +100,7 @@ class database:
         )
         self.__print("Citation table created")
         # Note: foreign aren't set because order of entry is not defined
-
-        # refreshing the cursor
-        self.cur.close()
-        self.cur = self.conn.cursor()
+        cur.close()
         return
 
     def addCitation(self, citeeKey, citerKey):
@@ -115,15 +113,13 @@ class database:
         Returns:
             nothing
         """
-        self.cur.execute(
+        cur = self.conn.cursor()
+        cur.execute(
             f"""INSERT INTO
             citation (citee_publication_key, citer_publication_key)
             VALUES ('{citeeKey}','{citerKey}');"""
         )
-
-        # refreshing the cursor
-        self.cur.close()
-        self.cur = self.conn.cursor()
+        cur.close()
         return
 
     def addAuthorNAuthorship(self, authorName, publicationKey):
@@ -137,9 +133,9 @@ class database:
         Returns:
             nothing
         """
-
+        cur = self.conn.cursor()
         # adding author is dosen't already exist
-        self.cur.execute(
+        cur.execute(
             f"""DO $$
             BEGIN
             IF NOT EXISTS(SELECT * FROM author WHERE name='{authorName}')
@@ -152,26 +148,20 @@ class database:
             """
         )
 
-        # refreshing the cursor
-        self.cur.close()
-        self.cur = self.conn.cursor()
-
         # getting the id of tha author
-        self.cur.execute(
+        cur.execute(
             f"""SELECT * FROM author WHERE name='{authorName}';
                 """
         )
-        authorId = self.cur.fetchone()[0]
+        authorId = cur.fetchone()[0]
         # adding authorship
-        self.cur.execute(
+        cur.execute(
             f"""INSERT INTO
                 authorship (author_id ,publication_key)
                 VALUES ({authorId}, '{publicationKey}');
                 """
         )
-        # refreshing cursor
-        self.cur.close()
-        self.cur = self.conn.cursor()
+        cur.close()
         return
 
     def addPublication(
@@ -188,7 +178,8 @@ class database:
             - publicationType: string
                 the type of the publication (it's one of the attributes)
         """
-        self.cur.execute(
+        cur = self.conn.cursor()
+        cur.execute(
             f"""INSERT INTO
                 publication (
                     title,
@@ -204,13 +195,10 @@ class database:
                 )
                 """
         )
-        # refreshing cursor
-        self.cur.close()
-        self.cur = self.conn.cursor()
+        cur.close()
         return
 
     def close(self):
         self.conn.commit()
-        self.cur.close()
         self.conn.close()
         return
